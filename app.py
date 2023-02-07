@@ -16,10 +16,12 @@ np.random.seed(seed)
 tf.random.set_seed(seed)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'  # 2 to enable
 UPLOAD_FOLDER = './uploads'
+# We only allow for png, jpg and jpeg
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 # final.captcha.20220831.6000
+# The first we define char_to_labels and labels_to_char, you can copy from Test for an image in the last video
 characters = ['2', '3', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'J', 'K', 'M', 'N', 'P', 'Q',
               'R', 'S', 'T', 'V', 'W', 'X', 'Y', 'Z']
 char_to_labels = {'2': 0, '3': 1, '5': 2, '6': 3, '7': 4, '8': 5, '9': 6, 'A': 7, 'B': 8, 'C': 9, 'D': 10, 'E': 11,
@@ -29,9 +31,10 @@ labels_to_char = {0: '2', 1: '3', 2: '5', 3: '6', 4: '7', 5: '8', 6: '9', 7: 'A'
                   12: 'F', 13: 'G', 14: 'H', 15: 'J', 16: 'K', 17: 'M', 18: 'N', 19: 'P', 20: 'Q', 21: 'R', 22: 'S',
                   23: 'T', 24: 'V', 25: 'W', 26: 'X', 27: 'Y', 28: 'Z'}
 
-model = keras.models.load_model('./final.captcha.20220831.6000.h5', compile=False)
+# Load model
+model = keras.models.load_model('./final.captcha.20220911.10_000.h5', compile=False)
 
-
+# copy the function in last video [Test for an image]
 def xpredict(img_path):
     total_img = 1
     img_height = 40
@@ -71,12 +74,12 @@ def xpredict(img_path):
         print('found a text [', outstr, '] in image ', img_path)
     return outstr
 
-
+# This function use to process allow image file only
 def allowed_file(filename):
     return '.' in filename and \
            filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-
+# Then we define router to detect file
 @app.route('/api/v1/detect_by_file', methods=['POST'])
 def detect_by_file():
     if 'file' not in request.files:
@@ -84,6 +87,7 @@ def detect_by_file():
             "type": "ERR",
             "result": "No file part"
         }
+    # this line, we use to check file from request, support by Flask. make sure the file are image only
     file = request.files['file']
     if file.filename == '':
         return {
@@ -93,10 +97,17 @@ def detect_by_file():
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         print('received file ', filename)
+        # if the file is ok, save to a folder and get path to this file.
         dest_file = os.path.join(app.config['UPLOAD_FOLDER'], str(uuid.uuid4()) + filename)
         file.save(dest_file)
+
+        # after that we use before function to detect
         str_predicted = xpredict(dest_file)
+
+        # remove file after detect success
         os.remove(dest_file)
+
+        # and return
         return {
             "type": "OK",
             "result": str_predicted
